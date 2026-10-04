@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>محاكاة دورة الجلب والتنفيذ – Fetch-Execute Cycle</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg1:#E6F6FF;--bg2:#FFF0DA;--ink:#1E2340;--panel:#fff;--mem:#7C4DFF;--cpu:#0FB5A6;--cu:#FF8A3D;--alu:#FF4F8B;--reg:#3A86FF;--bus:#FFB800;--ok:#1FAF6E;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg1:#12162B;--bg2:#241A3F;--ink:#F4F4FF;--panel:#252A4A}}
+:root[data-theme="dark"]{--bg1:#12162B;--bg2:#241A3F;--ink:#F4F4FF;--panel:#252A4A}
+html,body{height:100%;margin:0}
+body{background:linear-gradient(135deg,var(--bg1),var(--bg2));color:var(--ink);font-family:'Cairo',Tahoma,Arial,sans-serif;overflow:hidden;display:flex;align-items:center;justify-content:center}
+#box{position:relative;overflow:hidden}
+#stage{position:absolute;left:0;top:0;width:1280px;height:720px;transform-origin:0 0}
+#stage *{box-sizing:border-box}
+.abs{position:absolute}
+h1{position:absolute;left:0;top:4px;width:1280px;margin:0;text-align:center;font-size:36px;font-weight:900;line-height:1.3}
+.teacher{position:absolute;left:0;top:50px;width:1280px;text-align:center;font-size:20px;font-weight:500;opacity:.8}
+#steps{position:absolute;left:315px;top:88px;width:650px;display:flex;direction:rtl;align-items:center;justify-content:center;gap:10px}
+.st{padding:6px 16px;border-radius:30px;background:var(--panel);border:3px solid transparent;font-size:22px;font-weight:700;opacity:.55;white-space:nowrap;transition:.4s}
+.st small{font-size:14px;font-weight:500;margin-inline-start:5px}
+.st.done{opacity:.9;border-color:var(--ok)}.st.done::before{content:"✓ ";color:var(--ok)}
+.st.cur{opacity:1;background:var(--bus);color:#2B2000;border-color:#FF8A00;transform:scale(1.12);box-shadow:0 6px 18px rgba(255,150,0,.5)}
+#steps i{font-style:normal;font-size:24px;font-weight:900}
+#ctl{position:absolute;left:24px;top:90px;display:flex;gap:8px;direction:rtl}
+#ctl button{font:700 17px 'Cairo',Tahoma,sans-serif;padding:6px 14px;border-radius:12px;border:2px solid var(--ink);background:var(--panel);color:var(--ink);cursor:pointer}
+#ctl button:disabled{opacity:.35;cursor:default}
+.part{position:absolute;border:4px solid var(--c);border-radius:22px;background:color-mix(in srgb,var(--c) 14%,var(--panel));text-align:center;transition:.4s;padding-top:8px}
+.part b{display:block;font-size:24px;font-weight:900;line-height:1.2}
+.part em{display:block;font-style:normal;font-size:18px;font-weight:700;opacity:.8}
+.part.on{transform:scale(1.05);background:color-mix(in srgb,var(--c) 38%,var(--panel));box-shadow:0 0 0 5px color-mix(in srgb,var(--c) 45%,transparent),0 0 44px 12px color-mix(in srgb,var(--c) 70%,transparent);animation:pulse 1.2s ease-in-out infinite}
+.active .part:not(.on){opacity:.6}
+@keyframes pulse{50%{box-shadow:0 0 0 9px color-mix(in srgb,var(--c) 30%,transparent),0 0 60px 20px color-mix(in srgb,var(--c) 70%,transparent)}}
+#mem{--c:var(--mem);left:940px;top:140px;width:300px;height:390px;padding-top:6px}
+#cpuf{position:absolute;left:40px;top:140px;width:660px;height:390px;border:4px dashed var(--cpu);border-radius:28px;background:color-mix(in srgb,var(--cpu) 9%,transparent);text-align:center;padding-top:6px;font-size:24px;font-weight:900}
+#cpuf small{font-size:18px;font-weight:700;opacity:.8}
+#cu{--c:var(--cu);left:70px;top:200px;width:250px;height:100px}
+#alu{--c:var(--alu);left:70px;top:380px;width:250px;height:100px}
+#reg{--c:var(--reg);left:490px;top:256px;width:190px;height:160px}
+#reg .cells{position:absolute;left:14px;right:14px;bottom:12px;display:flex;flex-direction:column;gap:6px}
+#reg .cells span{height:20px;border-radius:8px;border:2px dashed var(--reg);opacity:.55}
+#bus{--c:var(--bus);left:700px;top:311px;width:240px;height:50px;border-radius:14px;overflow:hidden;padding:0;line-height:44px}
+#bus .ch{display:block;font-size:34px;font-weight:900;letter-spacing:8px;white-space:nowrap;direction:ltr;color:#B87900}
+#bus.on .ch{animation:flow .8s linear infinite}
+@keyframes flow{from{transform:translateX(-30px)}to{transform:translateX(0)}}
+.blabel{position:absolute;left:700px;top:272px;width:240px;text-align:center;font-size:22px;font-weight:900}
+.sl{position:absolute;left:990px;width:200px;height:54px;border-radius:14px;border:3px solid var(--mem);background:var(--panel);font-size:32px;font-weight:900;text-align:center;line-height:48px;direction:ltr;transition:.4s}
+.sl.empty{border-style:dashed;background:transparent}
+.sl.ghost{opacity:.3}
+.sl.nx{border-style:dashed;opacity:.75}
+.sl.glow{opacity:1;border-color:var(--ok);box-shadow:0 0 0 5px color-mix(in srgb,var(--ok) 40%,transparent),0 0 30px 8px color-mix(in srgb,var(--ok) 60%,transparent);animation:pulse 1.2s infinite;--c:var(--ok)}
+.sll{position:absolute;left:990px;width:200px;text-align:center;font-size:18px;font-weight:700}
+#card{position:absolute;left:0;top:0;display:none;z-index:20;padding:6px 24px;border-radius:18px;background:#FFE066;color:#3B2F00;border:4px solid #FF9F1C;font-size:36px;font-weight:900;direction:ltr;white-space:nowrap;box-shadow:0 10px 24px rgba(0,0,0,.3)}
+#card.res{background:#7CF0B6;border-color:var(--ok);color:#06361F}
+.pop{animation:pop .5s}
+@keyframes pop{40%{scale:1.3}}
+#cap{position:absolute;left:140px;top:548px;width:1000px;height:70px;border-radius:22px;background:var(--panel);border:3px solid var(--ink);display:flex;align-items:center;justify-content:center;gap:16px;font-size:32px;font-weight:700;transition:.4s}
+#cap .chip{padding:2px 18px;border-radius:20px;background:var(--bus);color:#2B2000;font-size:26px;font-weight:900}
+#cap.done{background:var(--ok);color:#fff;border-color:var(--ok);font-weight:900}
+#cap.done .chip{background:#fff;color:var(--ok);font-size:40px;padding:0 14px}
+#go{position:absolute;left:380px;top:634px;width:520px;height:72px;border:0;border-radius:36px;background:linear-gradient(90deg,#FF8A3D,#FF4F8B);color:#fff;font:900 32px 'Cairo',Tahoma,sans-serif;cursor:pointer;box-shadow:0 8px 22px rgba(255,79,139,.45)}
+#go:disabled{opacity:.5;cursor:default}
+.paused *{animation-play-state:paused!important}
+@media (prefers-reduced-motion:reduce){.part.on{animation:none}}
+</style>
+</head>
+<body>
+<div id="box"><div id="stage">
+<h1>محاكاة دورة الجلب والتنفيذ – Fetch-Execute Cycle</h1>
+<div class="teacher">إعداد المعلمة: أ. نهى أبوناب</div>
+
+<div id="ctl"><button id="bp">إيقاف مؤقت</button><button id="br" disabled>متابعة</button><button id="bx">إعادة المحاكاة</button></div>
+<div id="steps"></div>
+
+<div id="cpuf">وحدة المعالجة المركزية <small>CPU</small></div>
+<svg class="abs" style="left:0;top:0" width="1280" height="720"><g stroke="#0FB5A6" stroke-width="4" stroke-dasharray="3 9" stroke-linecap="round" opacity=".7"><path d="M490 336 L320 250"/><path d="M490 336 L320 430"/><path d="M195 300 L195 380"/></g></svg>
+<div class="part" id="cu"><b>وحدة التحكم</b><em>CU</em></div>
+<div class="part" id="alu"><b>وحدة الحساب والمنطق</b><em>ALU</em></div>
+<div class="part" id="reg"><b>المسجلات</b><em>Registers</em><div class="cells"><span></span><span></span><span></span></div></div>
+
+<div class="blabel">الناقل Bus</div>
+<div class="part" id="bus"><span class="ch">‹‹‹‹‹‹‹‹‹‹</span></div>
+
+<div class="part" id="mem"><b>الذاكرة الرئيسية</b><em>Main Memory</em></div>
+<div class="sll" style="top:200px" id="nl">التعليمة التالية</div><div class="sl nx" id="sn" style="top:224px"></div>
+<div class="sll" style="top:284px">التعليمة</div><div class="sl" id="si" style="top:308px"></div>
+<div class="sll" style="top:404px">النتيجة</div><div class="sl empty" id="sr" style="top:428px"></div>
+
+<div id="card"></div>
+<div id="cap"><span class="chip">✓</span></div>
+<button id="go">ابدأ دورة الجلب والتنفيذ</button>
+</div></div>
+<script>
+const $=s=>document.querySelector(s);
+const OPS=[[5,'+',3,8],[9,'−',4,5],[6,'×',2,12]];
+const NAMES=[['الجلب','Fetch'],['فك الترميز','Decode'],['التنفيذ','Execute'],['التخزين','Store']];
+const IN=[1090,336],OUT=[1090,456],REG=[585,360],CU=[195,250],ALU=[195,430],BUSX=[815,336];
+let run=0,paused=false,idx=0,anim=null,cur=IN,finished=false,running=false;
+const card=$('#card'),cap=$('#cap'),go=$('#go');
+const ex=i=>{const o=OPS[i%OPS.length];return o[0]+' '+o[1]+' '+o[2]};
+const steps=$('#steps');
+steps.innerHTML=NAMES.map((n,i)=>`<div class="st">${n[0]}<small>${n[1]}</small></div>`).join('<i>←</i>');
+const sts=[...steps.querySelectorAll('.st')];
+function setStage(n){sts.forEach((s,i)=>s.className='st'+(i<n?' done':'')+(i===n?' cur':''))}
+function lit(...n){['mem','bus','reg','cu','alu'].forEach(p=>$('#'+p).classList.toggle('on',n.includes(p)));document.body.classList.toggle('active',n.length>0)}
+function say(i,t){cap.className='';cap.innerHTML=`<span class="chip">${NAMES[i][0]}</span><span>${t}</span>`;cap.classList.add('pop')}
+function place(p){cur=p;card.style.transform=`translate(${p[0]}px,${p[1]}px) translate(-50%,-50%)`}
+function popEl(e){e.classList.remove('pop');void e.offsetWidth;e.classList.add('pop')}
+function sleep(ms){const id=run;return new Promise(r=>{let t=0;(function f(){if(id!==run)return r();if(!paused)t+=50;t>=ms?r():setTimeout(f,50)})()})}
+function move(pts,ms){
+  const all=[cur,...pts];let d=[0];
+  for(let i=1;i<all.length;i++)d.push(d[i-1]+Math.hypot(all[i][0]-all[i-1][0],all[i][1]-all[i-1][1]));
+  const kf=all.map((p,i)=>({offset:d[i]/d[d.length-1],transform:`translate(${p[0]}px,${p[1]}px) translate(-50%,-50%)`}));
+  anim=card.animate(kf,{duration:ms,easing:'ease-in-out',fill:'forwards'});
+  if(paused)anim.pause();
+  const a=anim,last=pts[pts.length-1];
+  return a.finished.then(()=>{place(last);a.cancel();anim=null})
+}
+function showSlots(){
+  $('#si').textContent=ex(idx);$('#sn').textContent=ex(idx+1);
+  $('#si').classList.remove('ghost');$('#sn').classList.remove('glow');$('#sn').classList.add('nx');
+  $('#sr').textContent='';$('#sr').classList.add('empty');
+}
+function reset(){
+  run++;anim&&anim.cancel();anim=null;paused=false;document.body.classList.remove('paused');
+  $('#bp').disabled=false;$('#br').disabled=true;
+  card.style.display='none';lit();setStage(-1);running=false;finished=false;
+  cap.className='';cap.innerHTML='<span>اضغطي على الزر لبدء الدورة</span>';
+  go.disabled=false;go.textContent='ابدأ دورة الجلب والتنفيذ';showSlots();
+}
+async function cycle(){
+  const id=++run,A=async p=>{await p;if(id!==run)throw 0};
+  const o=OPS[idx%OPS.length],bus=$('#bus .ch');
+  running=true;finished=false;go.disabled=true;showSlots();
+  try{
+    // 1 Fetch
+    setStage(0);lit('mem','bus');bus.textContent='‹‹‹‹‹‹‹‹‹‹';
+    card.className='';card.textContent=ex(idx);place(IN);card.style.display='block';popEl(card);
+    $('#si').classList.add('ghost');
+    say(0,'جلب التعليمة من الذاكرة الرئيسية');
+    await A(sleep(900));
+    await A(move([BUSX,REG],3000));
+    lit('reg');await A(sleep(1000));
+    // 2 Decode
+    setStage(1);lit('cu');say(1,'تترجم وحدة التحكم التعليمة إلى إشارة تحكم');
+    await A(move([CU],1800));await A(sleep(2200));
+    // 3 Execute
+    setStage(2);lit('alu');say(2,'تنفيذ التعليمة');
+    await A(move([ALU],1800));await A(sleep(800));
+    card.textContent=`${o[0]} ${o[1]} ${o[2]} = ${o[3]}`;popEl(card);await A(sleep(2000));
+    card.textContent=o[3];card.className='res';popEl(card);await A(sleep(1200));
+    // 4 Store
+    setStage(3);lit('reg');say(3,'تخزين وحفظ النتيجة في الذاكرة الرئيسية');
+    await A(move([REG],1600));
+    lit('bus','mem');bus.textContent='››››››››››';
+    await A(move([BUSX,OUT],3000));
+    $('#sr').classList.remove('empty');$('#sr').textContent=o[3];card.style.display='none';popEl($('#sr'));
+    await A(sleep(600));
+    // done
+    setStage(4);lit();cap.className='done';
+    cap.innerHTML='<span class="chip">✓</span><span>اكتملت دورة الجلب والتنفيذ</span>';popEl(cap);
+    $('#sn').classList.remove('nx');$('#sn').classList.add('glow');
+    running=false;finished=true;go.disabled=false;go.textContent='ابدأ الدورة التالية ↻';
+    $('#bp').disabled=true;
+  }catch(e){}
+}
+go.onclick=()=>{
+  if(running)return;
+  if(finished){idx=(idx+1)%OPS.length;$('#si').classList.remove('ghost');popEl($('#si'));}
+  $('#bp').disabled=false;cycle();
+};
+$('#bp').onclick=()=>{if(!running)return;paused=true;anim&&anim.pause();document.body.classList.add('paused');$('#bp').disabled=true;$('#br').disabled=false};
+$('#br').onclick=()=>{paused=false;anim&&anim.play();document.body.classList.remove('paused');$('#bp').disabled=false;$('#br').disabled=true};
+$('#bx').onclick=()=>{idx=0;reset();cycle()};
+function fit(){
+  const w=document.body.clientWidth,h=document.body.clientHeight,s=Math.min(w/1280,h/720),b=$('#box');
+  b.style.width=1280*s+'px';b.style.height=720*s+'px';$('#stage').style.transform=`scale(${s})`;
+}
+new ResizeObserver(fit).observe(document.body);fit();
+reset();
+</script>
+</body>
+</html>
